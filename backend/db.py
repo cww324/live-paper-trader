@@ -50,9 +50,21 @@ CREATE TABLE IF NOT EXISTS signal_state (
 );
 """
 
+_CREATE_META = """
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+"""
+
 _SEED_SIGNAL_STATE = """
 INSERT OR IGNORE INTO signal_state (signal)
-VALUES ('LQ-1'), ('LQ-2'), ('LQ-3'), ('VS-3');
+VALUES ('CA-1'), ('CA-2'), ('VS-2'), ('VS-3'), ('LQ-1'), ('LQ-2'), ('LQ-3');
+"""
+
+_SEED_STARTED_AT = """
+INSERT OR IGNORE INTO meta (key, value)
+VALUES ('started_at', CAST(strftime('%s', 'now') AS TEXT));
 """
 
 
@@ -61,8 +73,16 @@ async def init_db(db: aiosqlite.Connection) -> None:
     await db.execute(_CREATE_LIQUIDATIONS)
     await db.execute(_CREATE_TRADES)
     await db.execute(_CREATE_SIGNAL_STATE)
+    await db.execute(_CREATE_META)
     await db.execute(_SEED_SIGNAL_STATE)
+    await db.execute(_SEED_STARTED_AT)
     await db.commit()
+
+
+async def get_started_at(db: aiosqlite.Connection) -> int | None:
+    async with db.execute("SELECT value FROM meta WHERE key = 'started_at'") as cur:
+        row = await cur.fetchone()
+    return int(row[0]) if row else None
 
 
 async def upsert_candles(db: aiosqlite.Connection, rows: list[dict]) -> None:
