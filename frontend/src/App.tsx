@@ -131,16 +131,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold tracking-tight">Paper Trader</h1>
-        <div className="flex items-center gap-4 text-sm">
-          {btcPrice !== null && (
-            <span className="font-mono text-slate-300">
-              BTC{' '}
-              <span className="text-white font-semibold">
-                ${btcPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-bold tracking-tight">Paper Trader</h1>
           {config.started_at && (
             <span className="text-slate-500 text-xs">
               Live since{' '}
@@ -152,6 +144,16 @@ export default function App() {
               {' '}·{' '}
               <span className="text-slate-300">
                 {Math.floor((Date.now() / 1000 - config.started_at) / 86400)}d
+              </span>
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          {btcPrice !== null && (
+            <span className="font-mono text-slate-300">
+              BTC{' '}
+              <span className="text-white font-semibold">
+                ${btcPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </span>
           )}
