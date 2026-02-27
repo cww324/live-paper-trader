@@ -30,7 +30,11 @@ export default function App() {
   )
   const [lastFired, setLastFired] = useState<Partial<Record<string, number>>>({})
   const [trades, setTrades] = useState<Trade[]>([])
-  const [config, setConfig] = useState({ initial_equity: 10000, risk_pct: 0.005 })
+  const [config, setConfig] = useState<{ initial_equity: number; risk_pct: number; started_at: number | null }>({
+    initial_equity: 10000,
+    risk_pct: 0.005,
+    started_at: null,
+  })
 
   const refreshTrades = () =>
     fetch('/api/trades?status=all&limit=200')
@@ -134,6 +138,20 @@ export default function App() {
               BTC{' '}
               <span className="text-white font-semibold">
                 ${btcPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </span>
+          )}
+          {config.started_at && (
+            <span className="text-slate-500 text-xs">
+              Live since{' '}
+              <span className="text-slate-300">
+                {new Date(config.started_at * 1000).toLocaleDateString(undefined, {
+                  month: 'short', day: 'numeric', year: 'numeric'
+                })}
+              </span>
+              {' '}·{' '}
+              <span className="text-slate-300">
+                {Math.floor((Date.now() / 1000 - config.started_at) / 86400)}d
               </span>
             </span>
           )}
