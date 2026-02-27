@@ -252,9 +252,11 @@ async def api_trades(status: str = "all", limit: int = 100):
 
 @app.get("/api/config")
 async def api_config():
+    started_at = await db.get_started_at(_db_conn)
     return {
         "initial_equity": float(os.getenv("INITIAL_EQUITY", "10000")),
         "risk_pct": float(os.getenv("RISK_PCT", "0.005")),
+        "started_at": started_at,
     }
 
 
