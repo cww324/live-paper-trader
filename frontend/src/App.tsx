@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Chart from './components/Chart'
+import Carousel from './components/Carousel'
+import PnLChart from './components/PnLChart'
+import CalendarHeatmap from './components/CalendarHeatmap'
 import SignalPanel from './components/SignalPanel'
 import TradeLog from './components/TradeLog'
 import { useWebSocket } from './hooks/useWebSocket'
@@ -27,13 +30,16 @@ export default function App() {
   )
   const [lastFired, setLastFired] = useState<Partial<Record<string, number>>>({})
   const [trades, setTrades] = useState<Trade[]>([])
+  const [config, setConfig] = useState({ initial_equity: 10000, risk_pct: 0.005 })
 
-  // Load initial state on mount
-  useEffect(() => {
+  const refreshTrades = () =>
     fetch('/api/trades?status=all&limit=200')
       .then((r) => r.json())
       .then(setTrades)
       .catch(console.error)
+
+  useEffect(() => {
+    refreshTrades()
 
     fetch('/api/signals')
       .then((r) => r.json())
@@ -43,6 +49,11 @@ export default function App() {
           setFeatures({ type: 'feature_update', ...data.features })
         }
       })
+      .catch(console.error)
+
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then(setConfig)
       .catch(console.error)
   }, [])
 
@@ -57,10 +68,9 @@ export default function App() {
       case 'signal_fire':
         setLastSignal(event)
         setLastFired((prev) => ({ ...prev, [event.signal]: event.ts }))
-        // Add optimistic open trade
         setTrades((prev) => [
           {
-            id: Date.now(), // placeholder
+            id: Date.now(),
             signal: event.signal,
             direction: event.direction,
             entry_ts: event.ts,
@@ -76,19 +86,43 @@ export default function App() {
         break
       case 'trade_close':
         setLastClose(event)
-        // Refresh trades from API to get accurate data
-        fetch('/api/trades?status=all&limit=200')
-          .then((r) => r.json())
-          .then(setTrades)
-          .catch(console.error)
+        refreshTrades()
         break
     }
   }, [])
 
   useWebSocket(handleMessage)
 
-  // BTC price display
   const btcPrice = lastBtcCandle?.close ?? null
+
+  const slides = [
+    {
+      label: 'BTC-USD · 5m',
+      component: (
+        <Chart newCandle={lastBtcCandle} newSignal={lastSignal} newClose={lastClose} />
+      ),
+    },
+    {
+      label: 'Cumulative P&L',
+      component: (
+        <PnLChart
+          trades={trades}
+          initialEquity={config.initial_equity}
+          riskPct={config.risk_pct}
+        />
+      ),
+    },
+    {
+      label: 'Calendar Heatmap',
+      component: (
+        <CalendarHeatmap
+          trades={trades}
+          initialEquity={config.initial_equity}
+          riskPct={config.risk_pct}
+        />
+      ),
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -108,7 +142,7 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-screen-xl space-y-4 px-6 py-4">
-        <Chart newCandle={lastBtcCandle} newSignal={lastSignal} newClose={lastClose} />
+        <Carousel slides={slides} />
         <SignalPanel
           features={features}
           signalStates={signalStates}

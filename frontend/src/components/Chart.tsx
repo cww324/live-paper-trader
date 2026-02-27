@@ -115,10 +115,5 @@ export default function Chart({ newCandle, newSignal, newClose }: Props) {
     seriesRef.current.setMarkers(markersRef.current)
   }, [newClose])
 
-  return (
-    <div className="rounded-xl bg-slate-900 p-4">
-      <div className="mb-2 text-sm font-semibold text-slate-400">BTC-USD · 5m</div>
-      <div ref={containerRef} />
-    </div>
-  )
+  return <div ref={containerRef} />
 }
