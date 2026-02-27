@@ -12,6 +12,7 @@ export type CandleEvent = {
 export type FeatureUpdateEvent = {
   type: 'feature_update'
   eth_slope_sign: number        // -1, 0, or 1
+  btc_slope_sign: number        // -1, 0, or 1
   volume_btc_pct: number        // 0.0–1.0
   long_liq_btc_pct: number
   short_liq_btc_pct: number
@@ -20,7 +21,7 @@ export type FeatureUpdateEvent = {
 
 export type SignalFireEvent = {
   type: 'signal_fire'
-  signal: 'LQ-1' | 'LQ-2' | 'LQ-3' | 'VS-3'
+  signal: 'CA-1' | 'CA-2' | 'VS-2' | 'VS-3' | 'LQ-1' | 'LQ-2' | 'LQ-3'
   direction: 'LONG' | 'SHORT'
   entry_price: number
   ts: number
