@@ -130,27 +130,17 @@ async def run_websocket(
     Calls `on_candle(candle_dict)` for each update received.
     Reconnects with exponential backoff on disconnect.
     """
-    key_name, private_key_pem = _get_credentials()
     backoff = 1
 
     while True:
         try:
             logger.info("Connecting to Coinbase WebSocket...")
             async with websockets.connect(WS_URL, ping_interval=20, ping_timeout=30) as ws:
-                # Build signed subscribe message
-                ts = str(int(time.time()))
-                channel = "candles"
-                product_ids_str = ",".join(PRODUCTS)
-                # Coinbase WS signature: HMAC-SHA256 of "{ts}{channel}{product_ids}"
-                # For JWT auth we embed a JWT instead
-                token = _build_jwt(key_name, private_key_pem)
+                # candles is a public channel — no auth required
                 subscribe_msg = {
                     "type": "subscribe",
                     "product_ids": PRODUCTS,
-                    "channel": channel,
-                    "api_key": key_name,
-                    "timestamp": ts,
-                    "jwt": token,
+                    "channel": "candles",
                 }
                 await ws.send(json.dumps(subscribe_msg))
                 logger.info("Subscribed to Coinbase candles for %s", PRODUCTS)
