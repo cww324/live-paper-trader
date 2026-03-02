@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import Chart from './components/Chart'
 import Carousel from './components/Carousel'
 import PnLChart from './components/PnLChart'
 import CalendarHeatmap from './components/CalendarHeatmap'
 import SignalPanel from './components/SignalPanel'
 import TradeLog from './components/TradeLog'
+import SignalDetail from './pages/SignalDetail'
 import { useWebSocket } from './hooks/useWebSocket'
 import type {
   CandleEvent,
@@ -128,7 +130,7 @@ export default function App() {
     },
   ]
 
-  return (
+  const dashboard = (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -171,5 +173,12 @@ export default function App() {
         <TradeLog trades={trades} />
       </main>
     </div>
+  )
+
+  return (
+    <Routes>
+      <Route path="/" element={dashboard} />
+      <Route path="/signal/:id" element={<SignalDetail />} />
+    </Routes>
   )
 }

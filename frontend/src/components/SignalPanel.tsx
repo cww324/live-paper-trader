@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { FeatureUpdateEvent } from '../types'
 
 type SlopeKey = 'eth_slope_sign' | 'btc_slope_sign'
@@ -110,9 +111,10 @@ export default function SignalPanel({ features, signalStates, lastFired }: Props
           : null
 
         return (
-          <div
+          <Link
             key={signal}
-            className="rounded-xl border border-slate-700 bg-slate-900 p-4 flex flex-col gap-2"
+            to={`/signal/${signal}`}
+            className="rounded-xl border border-slate-700 bg-slate-900 p-4 flex flex-col gap-2 hover:border-slate-500 hover:bg-slate-800/60 transition-colors cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-base font-bold text-white">{signal}</span>
@@ -165,7 +167,7 @@ export default function SignalPanel({ features, signalStates, lastFired }: Props
             <div className="mt-auto text-xs text-slate-500">
               Last fired: <span className="text-slate-300">{formatTs(firedTs ?? null)}</span>
             </div>
-          </div>
+          </Link>
         )
       })}
     </div>
