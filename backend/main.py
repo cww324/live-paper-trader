@@ -99,7 +99,7 @@ async def _on_candle(candle: dict) -> None:
     eth_rows = await db.get_candles(conn, "ETH-USD")
     liq_rows = await db.get_liquidations(conn, "BTC")
 
-    logger.debug("_on_candle rows: btc=%d eth=%d liq=%d", len(btc_rows), len(eth_rows), len(liq_rows))
+    logger.info("_on_candle rows: btc=%d eth=%d liq=%d", len(btc_rows), len(eth_rows), len(liq_rows))
 
     if len(btc_rows) < 2 or not eth_rows or not liq_rows:
         logger.warning("_on_candle early return: btc=%d eth=%d liq=%d", len(btc_rows), len(eth_rows), len(liq_rows))
