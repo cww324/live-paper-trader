@@ -156,9 +156,16 @@ async def run_websocket(
                 logger.info("Subscribed to Coinbase candles for %s", PRODUCTS)
                 backoff = 1  # reset on successful connect
 
-                async for raw in ws:
+                while True:
+                    try:
+                        raw = await asyncio.wait_for(ws.recv(), timeout=600)
+                    except asyncio.TimeoutError:
+                        logger.warning("Coinbase WS silent for 10 min — reconnecting")
+                        break
                     msg = json.loads(raw)
-                    if msg.get("channel") != "candles":
+                    channel_name = msg.get("channel", "")
+                    if channel_name != "candles":
+                        logger.info("Coinbase WS non-candle message: channel=%s", channel_name)
                         continue
                     for event in msg.get("events", []):
                         for candle in event.get("candles", []):

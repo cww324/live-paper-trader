@@ -99,15 +99,22 @@ async def _on_candle(candle: dict) -> None:
     eth_rows = await db.get_candles(conn, "ETH-USD")
     liq_rows = await db.get_liquidations(conn, "BTC")
 
+    logger.debug("_on_candle rows: btc=%d eth=%d liq=%d", len(btc_rows), len(eth_rows), len(liq_rows))
+
     if len(btc_rows) < 2 or not eth_rows or not liq_rows:
+        logger.warning("_on_candle early return: btc=%d eth=%d liq=%d", len(btc_rows), len(eth_rows), len(liq_rows))
         return
 
     btc_df = pd.DataFrame(btc_rows)
     eth_df = pd.DataFrame(eth_rows)
     liq_df = pd.DataFrame(liq_rows)
 
-    features_df = compute_features(btc_df, eth_df, liq_df)
-    _features_cache = get_latest_features(features_df)
+    try:
+        features_df = compute_features(btc_df, eth_df, liq_df)
+        _features_cache = get_latest_features(features_df)
+    except Exception:
+        logger.exception("compute_features failed")
+        return
 
     # Broadcast feature update
     await _broadcast({**_features_cache, "type": "feature_update"})
