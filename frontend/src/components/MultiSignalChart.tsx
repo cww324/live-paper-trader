@@ -5,11 +5,14 @@ import type { Trade } from '../types'
 const SIGNAL_COLORS: Record<string, string> = {
   'CA-1': '#3b82f6',  // blue
   'CA-2': '#06b6d4',  // cyan
-  'VS-2': '#a855f7',  // purple
   'VS-3': '#6366f1',  // indigo
   'LQ-1': '#ef4444',  // red
-  'LQ-2': '#22c55e',  // green
   'LQ-3': '#f97316',  // orange
+  'LQ-4': '#f43f5e',  // rose
+  'LQ-5': '#10b981',  // emerald
+  'LQ-6': '#fb923c',  // amber-orange
+  'OV-1': '#a78bfa',  // violet
+  'CD-1': '#fbbf24',  // amber
 }
 
 const PORTFOLIO_COLOR = '#e2e8f0'

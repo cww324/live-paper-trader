@@ -6,11 +6,14 @@ import type { Trade } from '../types'
 const SIGNAL_DESC: Record<string, string> = {
   'CA-1': 'ETH slope flip — trade direction of new trend',
   'CA-2': 'BTC slope flip — trade direction of new BTC trend',
-  'VS-2': 'High-volume ETH slope flip, 60 min hold',
-  'VS-3': 'Slope flip + high volume + elevated liq → flip direction',
-  'LQ-1': 'Extreme long liquidations → SHORT',
-  'LQ-2': 'Extreme short liquidations → LONG',
-  'LQ-3': 'Bearish ETH slope flip + elevated long liq → SHORT',
+  'VS-3': 'ETH flip + vol p80 + liq p70 → flip direction',
+  'LQ-1': 'Extreme long liq onset → SHORT, h=8',
+  'LQ-3': 'Bearish ETH flip + long liq p70 → SHORT',
+  'LQ-4': 'Extreme long liq onset → SHORT, h=12',
+  'LQ-5': 'Extreme short liq onset → LONG, h=12',
+  'LQ-6': 'Liq directional imbalance > p80 → SHORT',
+  'OV-1': 'ETH flip + OI acceleration → flip direction',
+  'CD-1': 'ETH flip + BTC-ETH correlation < p20 → flip direction',
 }
 
 function fmt(ts: number | null): string {
@@ -18,9 +21,21 @@ function fmt(ts: number | null): string {
   return new Date(ts * 1000).toLocaleString()
 }
 
+function fmtDate(ts: number | null): string {
+  if (!ts) return '—'
+  return new Date(ts * 1000).toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+  })
+}
+
 function fmtPrice(p: number | null): string {
   if (p === null) return '—'
   return `$${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function runningDays(startedAt: number): string {
+  const days = Math.floor((Date.now() / 1000 - startedAt) / 86400)
+  return `${days}d`
 }
 
 export default function SignalDetail() {
@@ -28,42 +43,52 @@ export default function SignalDetail() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [config, setConfig] = useState<{ initial_equity: number; risk_pct: number }>({
     initial_equity: 10000,
-    risk_pct: 0.005,
+    risk_pct: 0.02,
   })
+  const [startedAt, setStartedAt] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/trades?status=all&limit=1000').then((r) => r.json()),
       fetch('/api/config').then((r) => r.json()),
+      fetch('/api/signals').then((r) => r.json()),
     ])
-      .then(([allTrades, cfg]) => {
+      .then(([allTrades, cfg, signals]) => {
         setTrades((allTrades as Trade[]).filter((t) => t.signal === id))
         setConfig(cfg)
+        const state = signals?.signal_states?.[id ?? '']
+        if (state?.started_at) setStartedAt(state.started_at)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [id])
 
   const closed = trades.filter((t) => t.status === 'CLOSED')
-  const open = trades.filter((t) => t.status === 'OPEN')
-  const wins = closed.filter((t) => (t.gross_bps ?? 0) > 0).length
+  const open   = trades.filter((t) => t.status === 'OPEN')
+  const wins   = closed.filter((t) => (t.gross_bps ?? 0) > 0).length
   const totalBps = closed.reduce((s, t) => s + (t.gross_bps ?? 0), 0)
-  const meanBps = closed.length > 0 ? totalBps / closed.length : 0
-  const winRate = closed.length > 0 ? (wins / closed.length) * 100 : 0
+  const meanBps  = closed.length > 0 ? totalBps / closed.length : 0
+  const winRate  = closed.length > 0 ? (wins / closed.length) * 100 : 0
 
-  const desc = id ? SIGNAL_DESC[id] ?? '' : ''
+  const desc = id ? SIGNAL_DESC[id] ?? id : ''
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 px-6 py-3 flex items-center gap-4">
-        <Link to="/" className="text-slate-400 hover:text-white transition-colors text-sm flex items-center gap-1">
+        <Link to="/" className="text-slate-400 hover:text-white transition-colors text-sm">
           ← Back
         </Link>
         <div>
           <h1 className="text-lg font-bold tracking-tight">{id}</h1>
           <p className="text-xs text-slate-400">{desc}</p>
         </div>
+        {startedAt && (
+          <div className="ml-auto text-right text-xs text-slate-500">
+            <div>Live since <span className="text-slate-300">{fmtDate(startedAt)}</span></div>
+            <div><span className="text-slate-300">{runningDays(startedAt)}</span> running</div>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto max-w-screen-xl space-y-6 px-6 py-6">
@@ -71,7 +96,7 @@ export default function SignalDetail() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Total Trades', value: trades.length.toString() },
-            { label: 'Win Rate', value: closed.length > 0 ? `${winRate.toFixed(1)}%` : '—' },
+            { label: 'Win Rate',  value: closed.length > 0 ? `${winRate.toFixed(1)}%` : '—' },
             {
               label: 'Mean bps',
               value: closed.length > 0 ? meanBps.toFixed(1) : '—',

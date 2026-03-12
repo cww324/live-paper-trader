@@ -11,17 +11,20 @@ export type CandleEvent = {
 
 export type FeatureUpdateEvent = {
   type: 'feature_update'
-  eth_slope_sign: number        // -1, 0, or 1
-  btc_slope_sign: number        // -1, 0, or 1
-  volume_btc_pct: number        // 0.0–1.0
+  eth_slope_sign: number
+  btc_slope_sign: number
+  volume_btc_pct: number
   long_liq_btc_pct: number
   short_liq_btc_pct: number
   total_liq_btc_pct: number
+  liq_imbalance_above_p80: number   // 0 or 1
+  oi_accelerating: number            // 0 or 1
+  btc_eth_decoupled: number          // 0 or 1
 }
 
 export type SignalFireEvent = {
   type: 'signal_fire'
-  signal: 'CA-1' | 'CA-2' | 'VS-2' | 'VS-3' | 'LQ-1' | 'LQ-2' | 'LQ-3'
+  signal: string
   direction: 'LONG' | 'SHORT'
   entry_price: number
   ts: number
@@ -56,4 +59,5 @@ export type SignalState = {
   last_fire_ts: number | null
   last_fire_dir: string | null
   open_trade_id: number | null
+  started_at: number | null
 }

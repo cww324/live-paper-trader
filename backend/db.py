@@ -1,4 +1,5 @@
 import os
+import time
 import aiosqlite
 
 DB_PATH = os.getenv("DB_PATH", "data/paper_trader.db")
@@ -19,9 +20,10 @@ CREATE TABLE IF NOT EXISTS candles_5m (
 _CREATE_LIQUIDATIONS = """
 CREATE TABLE IF NOT EXISTS liquidations_1h (
     ts            INTEGER NOT NULL,
-    symbol        TEXT NOT NULL,
-    long_liq_usd  REAL NOT NULL DEFAULT 0.0,
-    short_liq_usd REAL NOT NULL DEFAULT 0.0,
+    symbol        TEXT    NOT NULL,
+    long_liq_usd  REAL    NOT NULL DEFAULT 0.0,
+    short_liq_usd REAL    NOT NULL DEFAULT 0.0,
+    open_interest REAL    NOT NULL DEFAULT 0.0,
     PRIMARY KEY (ts, symbol)
 );
 """
@@ -46,7 +48,8 @@ CREATE TABLE IF NOT EXISTS signal_state (
     signal         TEXT PRIMARY KEY,
     last_fire_ts   INTEGER,
     last_fire_dir  TEXT,
-    open_trade_id  INTEGER
+    open_trade_id  INTEGER,
+    started_at     INTEGER
 );
 """
 
@@ -57,25 +60,59 @@ CREATE TABLE IF NOT EXISTS meta (
 );
 """
 
-_SEED_SIGNAL_STATE = """
-INSERT OR IGNORE INTO signal_state (signal)
-VALUES ('CA-1'), ('CA-2'), ('VS-2'), ('VS-3'), ('LQ-1'), ('LQ-2'), ('LQ-3');
-"""
-
 _SEED_STARTED_AT = """
 INSERT OR IGNORE INTO meta (key, value)
 VALUES ('started_at', CAST(strftime('%s', 'now') AS TEXT));
 """
 
+# Active signals — VS-2 and LQ-2 removed, LQ-4/5/6/OV-1/CD-1 added
+_ACTIVE_SIGNALS = ['CA-1', 'CA-2', 'VS-3', 'LQ-1', 'LQ-3', 'LQ-4', 'LQ-5', 'LQ-6', 'OV-1', 'CD-1']
+_LEGACY_SIGNALS  = ['VS-2', 'LQ-2']
+
 
 async def init_db(db: aiosqlite.Connection) -> None:
+    # Create tables
     await db.execute(_CREATE_CANDLES)
     await db.execute(_CREATE_LIQUIDATIONS)
     await db.execute(_CREATE_TRADES)
     await db.execute(_CREATE_SIGNAL_STATE)
     await db.execute(_CREATE_META)
-    await db.execute(_SEED_SIGNAL_STATE)
     await db.execute(_SEED_STARTED_AT)
+
+    # Migrations — safe to run on existing DBs
+    for stmt in [
+        "ALTER TABLE signal_state ADD COLUMN started_at INTEGER",
+        "ALTER TABLE liquidations_1h ADD COLUMN open_interest REAL NOT NULL DEFAULT 0.0",
+    ]:
+        try:
+            await db.execute(stmt)
+        except Exception:
+            pass  # column already exists
+
+    # Remove retired signals
+    placeholders = ",".join("?" * len(_LEGACY_SIGNALS))
+    await db.execute(
+        f"DELETE FROM signal_state WHERE signal IN ({placeholders})",
+        _LEGACY_SIGNALS,
+    )
+
+    # Seed new signals with started_at = now (INSERT OR IGNORE keeps existing rows intact)
+    now_ts = int(time.time())
+    await db.executemany(
+        "INSERT OR IGNORE INTO signal_state (signal, started_at) VALUES (?, ?)",
+        [(s, now_ts) for s in _ACTIVE_SIGNALS],
+    )
+
+    # Backfill started_at for existing signals that predate this column
+    await db.execute("""
+        UPDATE signal_state
+        SET started_at = COALESCE(
+            (SELECT CAST(value AS INTEGER) FROM meta WHERE key = 'started_at'),
+            strftime('%s', 'now')
+        )
+        WHERE started_at IS NULL
+    """)
+
     await db.commit()
 
 
@@ -86,7 +123,6 @@ async def get_started_at(db: aiosqlite.Connection) -> int | None:
 
 
 async def upsert_candles(db: aiosqlite.Connection, rows: list[dict]) -> None:
-    """Insert or replace candle rows. Each dict: ts, symbol, open, high, low, close, volume."""
     await db.executemany(
         """
         INSERT OR REPLACE INTO candles_5m (ts, symbol, open, high, low, close, volume)
@@ -98,11 +134,11 @@ async def upsert_candles(db: aiosqlite.Connection, rows: list[dict]) -> None:
 
 
 async def upsert_liquidations(db: aiosqlite.Connection, rows: list[dict]) -> None:
-    """Insert or replace liquidation rows. Each dict: ts, symbol, long_liq_usd, short_liq_usd."""
     await db.executemany(
         """
-        INSERT OR REPLACE INTO liquidations_1h (ts, symbol, long_liq_usd, short_liq_usd)
-        VALUES (:ts, :symbol, :long_liq_usd, :short_liq_usd)
+        INSERT OR REPLACE INTO liquidations_1h
+            (ts, symbol, long_liq_usd, short_liq_usd, open_interest)
+        VALUES (:ts, :symbol, :long_liq_usd, :short_liq_usd, :open_interest)
         """,
         rows,
     )
@@ -110,7 +146,6 @@ async def upsert_liquidations(db: aiosqlite.Connection, rows: list[dict]) -> Non
 
 
 async def prune_old_rows(db: aiosqlite.Connection) -> None:
-    """Delete rows older than 30 days."""
     await db.execute("DELETE FROM candles_5m WHERE ts < strftime('%s','now') - 2592000")
     await db.execute("DELETE FROM liquidations_1h WHERE ts < strftime('%s','now') - 2592000")
     await db.commit()
@@ -137,7 +172,6 @@ async def get_candles(
 async def get_candles_desc(
     db: aiosqlite.Connection, symbol: str, limit: int = 576
 ) -> list[dict]:
-    """Return most recent `limit` candles, newest first (for API responses)."""
     async with db.execute(
         """
         SELECT ts, symbol, open, high, low, close, volume
@@ -158,7 +192,7 @@ async def get_liquidations(
 ) -> list[dict]:
     async with db.execute(
         """
-        SELECT ts, symbol, long_liq_usd, short_liq_usd
+        SELECT ts, symbol, long_liq_usd, short_liq_usd, open_interest
         FROM liquidations_1h
         WHERE symbol = ?
         ORDER BY ts ASC
@@ -167,7 +201,7 @@ async def get_liquidations(
         (symbol, limit),
     ) as cur:
         rows = await cur.fetchall()
-    keys = ["ts", "symbol", "long_liq_usd", "short_liq_usd"]
+    keys = ["ts", "symbol", "long_liq_usd", "short_liq_usd", "open_interest"]
     return [dict(zip(keys, r)) for r in rows]
 
 
@@ -282,14 +316,15 @@ async def get_trades(
 
 async def get_signal_states(db: aiosqlite.Connection) -> dict:
     async with db.execute(
-        "SELECT signal, last_fire_ts, last_fire_dir, open_trade_id FROM signal_state"
+        "SELECT signal, last_fire_ts, last_fire_dir, open_trade_id, started_at FROM signal_state"
     ) as cur:
         rows = await cur.fetchall()
     return {
         r[0]: {
-            "last_fire_ts": r[1],
-            "last_fire_dir": r[2],
-            "open_trade_id": r[3],
+            "last_fire_ts":   r[1],
+            "last_fire_dir":  r[2],
+            "open_trade_id":  r[3],
+            "started_at":     r[4],
         }
         for r in rows
     }

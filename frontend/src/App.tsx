@@ -18,7 +18,7 @@ import type {
   SignalState,
 } from './types'
 
-const SIGNALS = ['LQ-1', 'LQ-2', 'LQ-3', 'VS-3'] as const
+const SIGNALS = ['CA-1', 'CA-2', 'VS-3', 'LQ-1', 'LQ-3', 'LQ-4', 'LQ-5', 'LQ-6', 'OV-1', 'CD-1'] as const
 
 export default function App() {
   const [lastBtcCandle, setLastBtcCandle] = useState<CandleEvent | null>(null)
@@ -27,7 +27,7 @@ export default function App() {
   const [features, setFeatures] = useState<FeatureUpdateEvent | null>(null)
   const [signalStates, setSignalStates] = useState<Record<string, SignalState>>(
     Object.fromEntries(
-      SIGNALS.map((s) => [s, { last_fire_ts: null, last_fire_dir: null, open_trade_id: null }])
+      SIGNALS.map((s) => [s, { last_fire_ts: null, last_fire_dir: null, open_trade_id: null, started_at: null }])
     )
   )
   const [lastFired, setLastFired] = useState<Partial<Record<string, number>>>({})
