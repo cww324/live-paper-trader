@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Chart from './components/Chart'
 import Carousel from './components/Carousel'
-import PnLChart from './components/PnLChart'
+import MultiSignalChart from './components/MultiSignalChart'
 import CalendarHeatmap from './components/CalendarHeatmap'
 import SignalPanel from './components/SignalPanel'
 import TradeLog from './components/TradeLog'
@@ -109,12 +109,24 @@ export default function App() {
       ),
     },
     {
-      label: 'Cumulative P&L',
+      label: 'P&L by Signal — bps',
       component: (
-        <PnLChart
+        <MultiSignalChart
           trades={trades}
           initialEquity={config.initial_equity}
           riskPct={config.risk_pct}
+          metric="bps"
+        />
+      ),
+    },
+    {
+      label: 'P&L by Signal — $',
+      component: (
+        <MultiSignalChart
+          trades={trades}
+          initialEquity={config.initial_equity}
+          riskPct={config.risk_pct}
+          metric="dollar"
         />
       ),
     },
