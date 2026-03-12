@@ -17,17 +17,17 @@ type SignalMeta = {
 
 const SIGNAL_META: Record<string, SignalMeta> = {
   'CA-1': {
-    desc: 'ETH slope flip — trade direction of new trend',
+    desc: 'ETH Momentum Flip',
     holdBars: 8,
     slopeKey: 'eth_slope_sign',
   },
   'CA-2': {
-    desc: 'BTC slope flip — trade direction of new BTC trend',
+    desc: 'BTC Momentum Flip',
     holdBars: 8,
     slopeKey: 'btc_slope_sign',
   },
   'VS-3': {
-    desc: 'ETH flip + vol p80 + liq p70 → flip direction',
+    desc: 'Triple Confluence',
     holdBars: 12,
     slopeKey: 'eth_slope_sign',
     featureKey: 'total_liq_btc_pct',
@@ -35,43 +35,43 @@ const SIGNAL_META: Record<string, SignalMeta> = {
     showVolume: true,
   },
   'LQ-1': {
-    desc: 'Extreme long liq onset → SHORT, h=8',
+    desc: 'Long Liquidation Cascade',
     holdBars: 8,
     featureKey: 'long_liq_btc_pct',
     featureLabel: 'Long Liq %ile',
   },
   'LQ-3': {
-    desc: 'Bearish ETH flip + long liq p70 → SHORT',
+    desc: 'Cascade-Gated Flip',
     holdBars: 8,
     slopeKey: 'eth_slope_sign',
     featureKey: 'long_liq_btc_pct',
     featureLabel: 'Long Liq %ile',
   },
   'LQ-4': {
-    desc: 'Extreme long liq onset → SHORT, h=12',
+    desc: 'Long Liquidation Cascade+',
     holdBars: 12,
     featureKey: 'long_liq_btc_pct',
     featureLabel: 'Long Liq %ile',
   },
   'LQ-5': {
-    desc: 'Extreme short liq onset → LONG, h=12',
+    desc: 'Short Squeeze',
     holdBars: 12,
     featureKey: 'short_liq_btc_pct',
     featureLabel: 'Short Liq %ile',
   },
   'LQ-6': {
-    desc: 'Liq directional imbalance > p80 → SHORT',
+    desc: 'Liq Imbalance',
     holdBars: 12,
     showLiqImbalance: true,
   },
   'OV-1': {
-    desc: 'ETH flip + OI acceleration → flip direction',
+    desc: 'OI Breakout',
     holdBars: 24,
     slopeKey: 'eth_slope_sign',
     showOiAccel: true,
   },
   'CD-1': {
-    desc: 'ETH flip + BTC-ETH correlation < p20 → flip direction',
+    desc: 'ETH Divergence',
     holdBars: 12,
     slopeKey: 'eth_slope_sign',
     showDecoupled: true,

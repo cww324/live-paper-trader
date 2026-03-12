@@ -109,24 +109,12 @@ export default function App() {
       ),
     },
     {
-      label: 'P&L by Signal — bps',
+      label: 'P&L by Signal',
       component: (
         <MultiSignalChart
           trades={trades}
           initialEquity={config.initial_equity}
           riskPct={config.risk_pct}
-          metric="bps"
-        />
-      ),
-    },
-    {
-      label: 'P&L by Signal — $',
-      component: (
-        <MultiSignalChart
-          trades={trades}
-          initialEquity={config.initial_equity}
-          riskPct={config.risk_pct}
-          metric="dollar"
         />
       ),
     },

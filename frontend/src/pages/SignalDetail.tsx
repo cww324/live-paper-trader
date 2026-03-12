@@ -4,16 +4,16 @@ import PnLChart from '../components/PnLChart'
 import type { Trade } from '../types'
 
 const SIGNAL_DESC: Record<string, string> = {
-  'CA-1': 'ETH slope flip — trade direction of new trend',
-  'CA-2': 'BTC slope flip — trade direction of new BTC trend',
-  'VS-3': 'ETH flip + vol p80 + liq p70 → flip direction',
-  'LQ-1': 'Extreme long liq onset → SHORT, h=8',
-  'LQ-3': 'Bearish ETH flip + long liq p70 → SHORT',
-  'LQ-4': 'Extreme long liq onset → SHORT, h=12',
-  'LQ-5': 'Extreme short liq onset → LONG, h=12',
-  'LQ-6': 'Liq directional imbalance > p80 → SHORT',
-  'OV-1': 'ETH flip + OI acceleration → flip direction',
-  'CD-1': 'ETH flip + BTC-ETH correlation < p20 → flip direction',
+  'CA-1': 'ETH Momentum Flip',
+  'CA-2': 'BTC Momentum Flip',
+  'VS-3': 'Triple Confluence',
+  'LQ-1': 'Long Liquidation Cascade',
+  'LQ-3': 'Cascade-Gated Flip',
+  'LQ-4': 'Long Liquidation Cascade+',
+  'LQ-5': 'Short Squeeze',
+  'LQ-6': 'Liq Imbalance',
+  'OV-1': 'OI Breakout',
+  'CD-1': 'ETH Divergence',
 }
 
 function fmt(ts: number | null): string {

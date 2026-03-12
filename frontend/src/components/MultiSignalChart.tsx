@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createChart, Time } from 'lightweight-charts'
+import { createChart, TickMarkType, Time } from 'lightweight-charts'
 import type { Trade } from '../types'
 
 const SIGNAL_COLORS: Record<string, string> = {
@@ -21,12 +21,12 @@ type Props = {
   trades: Trade[]
   initialEquity: number
   riskPct: number
-  metric: 'bps' | 'dollar'
 }
 
-export default function MultiSignalChart({ trades, initialEquity, riskPct, metric }: Props) {
+export default function MultiSignalChart({ trades, initialEquity, riskPct }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [cumulative, setCumulative] = useState(true)
+  const [metric, setMetric] = useState<'bps' | 'dollar'>('bps')
 
   const closed = trades.filter(
     (t) => t.status === 'CLOSED' && t.exit_ts !== null && t.gross_bps !== null
@@ -38,7 +38,17 @@ export default function MultiSignalChart({ trades, initialEquity, riskPct, metri
     const chart = createChart(containerRef.current, {
       layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
       grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        tickMarkFormatter: (time: number, tickMarkType: TickMarkType) => {
+          const d = new Date(time * 1000)
+          if (tickMarkType === TickMarkType.DayOfMonth || tickMarkType === TickMarkType.Month) {
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+          return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        },
+      },
       rightPriceScale: { visible: true },
       width: containerRef.current.clientWidth,
       height: 340,
@@ -51,7 +61,6 @@ export default function MultiSignalChart({ trades, initialEquity, riskPct, metri
 
     const posSize = initialEquity * riskPct
 
-    // Group closed trades by signal, sorted by exit time
     const bySignal: Record<string, { ts: number; val: number }[]> = {}
     for (const t of closed) {
       const rawVal = metric === 'bps' ? t.gross_bps! : posSize * (t.gross_bps! / 10000)
@@ -59,28 +68,18 @@ export default function MultiSignalChart({ trades, initialEquity, riskPct, metri
       bySignal[t.signal].push({ ts: t.exit_ts!, val: rawVal })
     }
 
-    // Aggregate trades at same timestamp (sum values), then sort
     function toSeries(entries: { ts: number; val: number }[]): { time: Time; value: number }[] {
       const agg = new Map<number, number>()
-      for (const { ts, val } of entries) {
-        agg.set(ts, (agg.get(ts) ?? 0) + val)
-      }
+      for (const { ts, val } of entries) agg.set(ts, (agg.get(ts) ?? 0) + val)
       const sorted = [...agg.entries()].sort((a, b) => a[0] - b[0])
-
       if (cumulative) {
         let running = 0
-        return sorted.map(([ts, val]) => {
-          running += val
-          return { time: ts as Time, value: running }
-        })
-      } else {
-        return sorted.map(([ts, val]) => ({ time: ts as Time, value: val }))
+        return sorted.map(([ts, val]) => ({ time: ts as Time, value: (running += val) }))
       }
+      return sorted.map(([ts, val]) => ({ time: ts as Time, value: val }))
     }
 
-    // Per-signal series
-    const activeSignals = Object.keys(bySignal).sort()
-    for (const signal of activeSignals) {
+    for (const signal of Object.keys(bySignal).sort()) {
       const series = chart.addLineSeries({
         color: SIGNAL_COLORS[signal] ?? '#94a3b8',
         lineWidth: 2,
@@ -91,8 +90,7 @@ export default function MultiSignalChart({ trades, initialEquity, riskPct, metri
       series.setData(toSeries(bySignal[signal]))
     }
 
-    // Portfolio total — aggregate all closed trades
-    if (activeSignals.length > 1) {
+    if (Object.keys(bySignal).length > 1) {
       const allEntries = closed.map((t) => ({
         ts: t.exit_ts!,
         val: metric === 'bps' ? t.gross_bps! : posSize * (t.gross_bps! / 10000),
@@ -100,7 +98,7 @@ export default function MultiSignalChart({ trades, initialEquity, riskPct, metri
       const portfolioSeries = chart.addLineSeries({
         color: PORTFOLIO_COLOR,
         lineWidth: 2,
-        lineStyle: 2, // dashed
+        lineStyle: 2,
         title: 'Total',
         lastValueVisible: true,
         priceLineVisible: false,
@@ -128,38 +126,51 @@ export default function MultiSignalChart({ trades, initialEquity, riskPct, metri
 
   return (
     <div className="space-y-2">
-      {/* Legend + toggle */}
       <div className="flex items-center justify-between px-1">
+        {/* Legend */}
         <div className="flex flex-wrap gap-3">
           {activeSignals.map((sig) => (
             <span key={sig} className="flex items-center gap-1.5 text-xs text-slate-400">
-              <span
-                className="inline-block h-2 w-5 rounded-sm"
-                style={{ background: SIGNAL_COLORS[sig] ?? '#94a3b8' }}
-              />
+              <span className="inline-block h-2 w-5 rounded-sm" style={{ background: SIGNAL_COLORS[sig] ?? '#94a3b8' }} />
               {sig}
             </span>
           ))}
           {activeSignals.length > 1 && (
             <span className="flex items-center gap-1.5 text-xs text-slate-400">
-              <span
-                className="inline-block h-2 w-5 rounded-sm opacity-80"
-                style={{ background: PORTFOLIO_COLOR, borderBottom: '1px dashed' }}
-              />
+              <span className="inline-block h-2 w-5 rounded-sm opacity-80" style={{ background: PORTFOLIO_COLOR }} />
               Total
             </span>
           )}
         </div>
-        <button
-          onClick={() => setCumulative((c) => !c)}
-          className={`rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
-            cumulative
-              ? 'border-blue-500/60 bg-blue-500/20 text-blue-400'
-              : 'border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-slate-300'
-          }`}
-        >
-          {cumulative ? 'Cumulative' : 'Per Trade'}
-        </button>
+
+        {/* Toggles */}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-slate-700 overflow-hidden text-xs font-medium">
+            {(['bps', 'dollar'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className={`px-3 py-1 transition-colors ${
+                  metric === m
+                    ? 'bg-slate-700 text-white'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                {m === 'bps' ? 'bps' : '$'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCumulative((c) => !c)}
+            className={`rounded-lg border px-3 py-1 text-xs font-medium transition-colors ${
+              cumulative
+                ? 'border-blue-500/60 bg-blue-500/20 text-blue-400'
+                : 'border-slate-600 bg-slate-900 text-slate-400 hover:text-slate-300'
+            }`}
+          >
+            {cumulative ? 'Cumulative' : 'Per Trade'}
+          </button>
+        </div>
       </div>
 
       <div ref={containerRef} />
