@@ -39,7 +39,7 @@ export default function App() {
   })
 
   const refreshTrades = () =>
-    fetch('/api/trades?status=all&limit=200')
+    fetch('/api/trades?status=all&limit=5000')
       .then((r) => r.json())
       .then(setTrades)
       .catch(console.error)
